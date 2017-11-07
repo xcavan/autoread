@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>PDF Reader</title>
+
+<script src="./web-resources/pdf.js"></script>
+
+<script>   
+    //var PDF_URL = "./files/story.pdf";
+    var PDF_URL = "./files/story.pdf";
+    PDFJS.workerSrc = "./web-resources/pdf.worker.js";
+
+    var pageNumber = 1;
+    
+    var PDFDoc = null;
+    
+    PDFJS.getDocument(PDF_URL).then(function (PDFDocumentInstance) {
+        
+       var totalPages = PDFDocumentInstance.pdfInfo.numPages;
+       PDFDoc = PDFDocumentInstance;
+
+    }, function (reason) {
+        // PDF loading error
+        console.error(reason);
+    });
+    
+    /**
+     * Retrieves the text of a specif page within a PDF Document obtained through pdf.js 
+     * 
+     * @param {Integer} pageNum Specifies the number of the page 
+     * @param {PDFDocument} PDFDocumentInstance The PDF document obtained 
+     **/
+    function getPageText(pageNum, PDFDocumentInstance) {
+        // Return a Promise that is solved once the text of the page is retrieven
+        return new Promise(function (resolve, reject) {
+            PDFDocumentInstance.getPage(pageNum).then(function (pdfPage) {
+                // The main trick to obtain the text of the PDF page, use the getTextContent method
+                pdfPage.getTextContent().then(function (textContent) {
+                    var textItems = textContent.items;
+                    var finalString = "";
+
+                    // Concatenate the string of the item to the final string
+                    for (var i = 0; i < textItems.length; i++) {
+                        var item = textItems[i];
+
+                        finalString += item.str + " ";
+                    }
+
+                    // Solve promise with the text retrieven from the page
+                    resolve(finalString);
+                });
+            });
+        });
+    }
+     
+    /*
+    *
+    */
+    var synth = window.speechSynthesis;
+    synth.rate = 0.5;
+    function readOut(readOutText){
+    	var utterThis = new SpeechSynthesisUtterance(readOutText);
+    	synth.speak(utterThis);
+    	utterThis.onend = function(){
+    		if(cont){
+    			document.getElementById("page_no").value = parseInt(pageNumber) + 1;
+    			contRead();
+    		}
+    	};
+    }
+    
+    function readmeNow(){
+    	// Extract the text
+    	pageNumber = parseInt(document.getElementById("page_no").value);
+    	PDFDocumentInstance = PDFDoc;
+        getPageText(pageNumber , PDFDocumentInstance).then(function(textPage){
+            // Show the text of the page in the console
+            document.getElementById("text_area").innerText = textPage;
+            readOut(textPage);
+            console.log(textPage);
+        });
+    }
+    var doneSpeaking = true;
+    var cont = false;
+    function contRead(){
+    	cont = true;   		
+   		readmeNow();   		
+    }
+    function stopRead(){
+    	cont = false;
+    }
+    function action(code){
+    	switch(code){
+    	case 'pause':
+    		synth.pause();
+    		break;
+    	case 'resume':
+    		synth.resume();
+    		break;
+    	case 'stop':
+    		synth.cancel();
+    		break;
+    	case 'rate':    		
+    		synth.rate = parseInt(document.getElementById("speachRate").value);
+    		break;
+    	}
+    }
+</script>
+
+</head>
+<body>
+<div>
+	Page No: <input type="number" id="page_no" value=1>
+	<button onclick="readmeNow()">Read Out</button>
+	<button onclick="contRead()">Continue Reading</button>
+	<button onclick="stopRead()">Stop Reading</button>
+	<br>
+	<button onclick="action('pause')">pause</button>
+	<button onclick="action('resume')">resume</button>
+	<button onclick="action('stop')">stop</button>
+	<div>
+	Rate: <input type="number" id="speachRate" value=0.5>
+	<button onclick="action('rate')">Change Rate</button>
+	</div>
+	<p id="text_area">this is where the text will come</p>
+</div>
+
+</body>
+</html>
